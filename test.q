@@ -1,9 +1,18 @@
 
+assert: {[condition;message]
+  if[not condition; 'message];
+  -1 message,"... OK";
+  };
+
 tojson: (`$"qrapidjson_l64") 2:(`tojson;1);
 
 ////////////////////////////////////////////
 ///////////  Type Speed Test ///////////////
 ////////////////////////////////////////////
+
+-1 "---- .j.j vs qrapidjson speed test -----";
+-1 " ";
+-1 "Running Test...";
 
 t: ([] sym: enlist `Symbol;
        str: enlist "String";
@@ -27,6 +36,8 @@ timeJsonFormat:{[d]
  };
 
 result: timeJsonFormat 1000000#t;
+-1 " ";
+-1 {[row] "|" sv {[val] ((25 - count[val])#" "),val} each "," vs row} each "," 0: result;
 
 ////////  Example output  ////////
 
@@ -49,6 +60,9 @@ result: timeJsonFormat 1000000#t;
 ////////////////////////////////////////////
 ///////////  Exactness Test ///////////////
 ////////////////////////////////////////////
+-1 " ";
+-1 "Checking if the values in the .j.j serialised table match the values in the qrapidjson serialised table";
+-1 " ";
 
 tab:([] int:100000?1000000i;
         float:100000?1000f;
@@ -66,10 +80,9 @@ jjTab: .j.k .j.j tab;
 jjTab:update {ssr[x;"T";"D"]} each timestamp from jjTab;
 cppTab: .j.k tojson tab;
 
-// test floats are ~ equivalent
 floatResult: all {x within (y - 0.001; y + 0.001)}'[exec float from jjTab; exec float from cppTab];
+assert[floatResult;"test floats are ~ equivalent"];
 
-// test rest of the fields for exactness
 allResult: (delete float from jjTab) ~ delete float from cppTab;
-
+assert[allResult;"test all non float columns are matching"];
 

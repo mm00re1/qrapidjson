@@ -31,6 +31,10 @@
 
 using namespace rapidjson;
 
+// Days between 1970-01-01 (Unix epoch) and 2000-01-01 (kdb+ epoch).
+// 30*365 + 7 leap days (1972,76,80,84,88,92,96) = 10957.
+constexpr long long DAYS_1970_TO_2000 = 10957;
+
 static inline void ymd_from_days(int64_t z, int& y, unsigned& m, unsigned& d) {
     // z = days since 1970-01-01
     z += 719468;                                   // convert to civil-from-epoch base
@@ -45,9 +49,9 @@ static inline void ymd_from_days(int64_t z, int& y, unsigned& m, unsigned& d) {
     y += (m <= 2);
 }
 
-static inline void write2(char* p, unsigned v) { p[0] = '0' + (v/10)%10; p[1] = '0' + v%10; }
-static inline void write3(char* p, unsigned v) { p[0] = '0' + (v/100)%10; p[1] = '0' + (v/10)%10; p[2] = '0' + v%10; }
-static inline void write4(char* p, unsigned v) { p[0] = '0' + (v/1000)%10; p[1] = '0' + (v/100)%10; p[2] = '0' + (v/10)%10; p[3] = '0' + v%10; }
+static inline void write2digits(char* p, unsigned v) { p[0] = '0' + (v/10)%10; p[1] = '0' + v%10; }
+static inline void write3digits(char* p, unsigned v) { p[0] = '0' + (v/100)%10; p[1] = '0' + (v/10)%10; p[2] = '0' + v%10; }
+static inline void write4digits(char* p, unsigned v) { p[0] = '0' + (v/1000)%10; p[1] = '0' + (v/100)%10; p[2] = '0' + (v/10)%10; p[3] = '0' + v%10; }
 
 template<typename Writer> void serialise_atom(Writer& w, K x, int i = -1);
 
@@ -442,11 +446,11 @@ inline void emit_date(Writer& w, int n)
     {
         // n = days since 2000-01-01; convert to days since 1970-01-01
         int y; unsigned m, d;
-        ymd_from_days((int64_t)n + 10957, y, m, d);
+        ymd_from_days((int64_t)n + DAYS_1970_TO_2000, y, m, d);
         char buf[10];
-        write4(buf+0, (unsigned)y);
-        buf[4]='-'; write2(buf+5, m);
-        buf[7]='-'; write2(buf+8, d);
+        write4digits(buf+0, (unsigned)y);
+        buf[4]='-'; write2digits(buf+5, m);
+        buf[7]='-'; write2digits(buf+8, d);
         w.String(buf, 10);
     }
 }
@@ -528,7 +532,7 @@ inline void emit_timestamp(Writer& w, long long n)
     }
     else
     {
-        time_t tt = n * 1e-9 + 10957 * 8.64e4; // magic, see: https://github.com/kxcontrib/wiki/blob/master/csv.c
+        time_t tt = n * 1e-9 + DAYS_1970_TO_2000 * 8.64e4; // magic, see: https://github.com/kxcontrib/wiki/blob/master/csv.c
         struct tm timinfo;
         gmtime_r(&tt, &timinfo);
         char buff[29+1];
@@ -636,7 +640,7 @@ inline void emit_datetime(Writer& w, double n)
         if (sod < 0) { sod += 86400; --days_2000; }
 
         int y; unsigned m, d;
-        ymd_from_days(days_2000 + 10957, y, m, d);               // -> UTC Y-M-D
+        ymd_from_days(days_2000 + DAYS_1970_TO_2000, y, m, d);               // -> UTC Y-M-D
 
         unsigned hh = (unsigned)(sod / 3600);
         unsigned mm = (unsigned)((sod / 60) % 60);
@@ -644,13 +648,13 @@ inline void emit_datetime(Writer& w, double n)
 
         // "YYYY-MM-DDTHH:MM:SS.mmm" -> 23 chars
         char buf[23];
-        write4(buf+0, (unsigned)y);
-        buf[4]='-'; write2(buf+5, m);
-        buf[7]='-'; write2(buf+8, d);
-        buf[10]='T'; write2(buf+11, hh);
-        buf[13]=':'; write2(buf+14, mm);
-        buf[16]=':'; write2(buf+17, ss);
-        buf[19]='.'; write3(buf+20, (unsigned)ms);
+        write4digits(buf+0, (unsigned)y);
+        buf[4]='-'; write2digits(buf+5, m);
+        buf[7]='-'; write2digits(buf+8, d);
+        buf[10]='T'; write2digits(buf+11, hh);
+        buf[13]=':'; write2digits(buf+14, mm);
+        buf[16]=':'; write2digits(buf+17, ss);
+        buf[19]='.'; write3digits(buf+20, (unsigned)ms);
         w.String(buf, 23);
     }
 }
